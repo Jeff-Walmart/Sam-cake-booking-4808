@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>山姆草莓蛋糕预约</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+            background: #fff;
+            color: #333;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .welcome {
+            text-align: center;
+            color: #1890ff;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: #E50000;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .btn-outline {
+            background: #fff;
+            color: #6c757d;
+            border: 1px solid #ddd;
+        }
+        .code {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #E50000;
+            text-align: center;
+            margin: 15px 0;
+        }
+        #resultSection, #staff-panel {
+            display: none;
+        }
+        .small {
+            text-align: center;
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 15px;
+        }
+        .small a {
+            color: #888;
+            text-decoration: underline;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        .modal-content {
+            background: white;
+            margin: 100px auto;
+            padding: 20px;
+            width: 90%;
+            max-width: 300px;
+            border-radius: 8px;
+        }
+        .note {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 12px;
+            line-height: 1.5;
+        }
+        .time-info {
+            background: #f0f7ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .slot-display {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #1890ff;
+            margin: 10px 0;
+        }
+        .countdown {
+            font-size: 0.9em;
+            color: #E50000;
+            margin-top: 5px;
+        }
+        .warning {
+            background: #fff7e6;
+            border: 1px solid #ffd591;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .business-hours-config {
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .time-range-selectors {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .time-range-selectors select {
+            flex: 1;
+        }
+        .time-label {
+            font-size: 0.9em;
+            color: #666;
+            margin: 5px 0;
+        }
+        .schedule-info {
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+        .divider {
+            margin: 0 5px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="member-section">
+            <div class="welcome">欢迎光临西溪山姆会员商店</div>
+            
+            <!-- 时间信息展示 -->
+            <div class="card" id="timeSection">
+                <div class="time-info">
+                    <div>当前时间：<span id="currentTime">--:--</span></div>
+                    <div class="slot-display">
+                        当前预约时段：<span id="currentSlot">--:-- - --:--</span>
+                    </div>
+                    <div class="slot-display">
+                        可预约取货时段：<span id="pickupTimeSlot">--:-- - --:--</span>
+                    </div>
+                    <div class="countdown">
+                        距离下个时段：<span id="countdown">--分--秒</span>
+                    </div>
+                </div>
+                <div class="schedule-info">
+                    ⏰ 预约规则：当前时段预约下一时段的蛋糕<br>
+                    📅 营业时间：<span id="displayHours">09:00-20:00</span>
+                </div>
+                <div class="warning" id="timeWarning"></div>
+            </div>
+            
+            <!-- 预约区域 -->
+            <div class="card">
+                <p>点击下方按钮，验证您在门店附近以预约草莓蛋糕。</p>
+                <div class="note">
+                    🔒 您的位置信息仅在本地设备使用，用于本次距离计算，<strong>不会上传、保存或泄露</strong>，请放心授权。<br>
+                    ⏰ 每个设备每天只能预约1次。
+                </div>
+                <button class="btn" id="bookBtn" onclick="getLocation()">✅ 获取位置并预约</button>
+                <div id="status"></div>
+            </div>
+            
+            <!-- 预约结果 -->
+            <div class="card" id="resultSection">
+                <p>🎉 预约成功！</p>
+                <div class="time-info">
+                    <p>取货时段：<strong id="pickupSlot">--:-- - --:--</strong></p>
+                    <p>取货码：<span class="code" id="codeDisplay">——</span></p>
+                </div>
+                <p>请凭此页面到蛋糕区领取</p>
+            </div>
+            
+            <div class="small">
+                <a href="#" onclick="showStaffLogin(); return false;">员工入口</a>
+            </div>
+        </div>
+
+        <!-- 员工登录模态框 -->
+        <div id="staff-login" class="modal">
+            <div class="modal-content">
+                <h3 style="text-align:center;margin-bottom:15px;">工作人员登录</h3>
+                <input type="password" id="staffPinInput" placeholder="请输入工号" autofocus>
+                <button class="btn" onclick="doStaffLogin()">登录</button>
+                <button class="btn btn-outline" onclick="hideStaffLogin()">取消</button>
+            </div>
+        </div>
+
+        <!-- 增加员工模态框 -->
+        <div id="add-staff-modal" class="modal">
+            <div class="modal-content">
+                <h3 style="text-align:center;margin-bottom:15px;">➕ 增加其他人员</h3>
+                <input type="text" id="newStaffPin" placeholder="输入新工号" maxlength="20">
+                <button class="btn" style="background:#1890ff;" onclick="saveNewStaff()">保存</button>
+                <button class="btn btn-outline" onclick="document.getElementById('add-staff-modal').style.display='none'">取消</button>
+            </div>
+        </div>
+
+        <!-- 修改位置模态框 -->
+        <div id="edit-location-modal" class="modal">
+            <div class="modal-content">
+                <h3 style="text-align:center;margin-bottom:15px;">📍 修改门店定位</h3>
+                <input type="text" id="newLat" placeholder="纬度（例如：30.247204）">
+                <input type="text" id="newLng" placeholder="经度（例如：120.049063）">
+                <button class="btn" style="background:#52c41a;" onclick="saveNewLocation()">保存定位</button>
+                <button class="btn btn-outline" onclick="document.getElementById('edit-location-modal').style.display='none'">取消</button>
+            </div>
+        </div>
+
+        <!-- 修改营业时间模态框 -->
+        <div id="edit-hours-modal" class="modal">
+            <div class="modal-content">
+                <h3 style="text-align:center;margin-bottom:15px;">⏰ 修改营业时间</h3>
+                <div class="business-hours-config">
+                    <div class="time-label">营业时间段：</div>
+                    <div class="time-range-selectors">
+                        <select id="startHour">
+                            <option value="8">08:00</option>
+                            <option value="9" selected>09:00</option>
+                            <option value="10">10:00</option>
+                            <option value="11">11:00</option>
+                        </select>
+                        <span class="divider">至</span>
+                        <select id="endHour">
+                            <option value="19">19:00</option>
+                            <option value="20" selected>20:00</option>
+                            <option value="21">21:00</option>
+                            <option value="22">22:00</option>
+                        </select>
+                    </div>
+                    <div class="time-label" style="margin-top:10px;">预约规则：每半小时为一个时段，当前时段预约下一时段的蛋糕</div>
+                </div>
+                <button class="btn" style="background:#1890ff;" onclick="saveBusinessHours()">保存营业时间</button>
+                <button class="btn btn-outline" onclick="document.getElementById('edit-hours-modal').style.display='none'">取消</button>
+            </div>
+        </div>
+
+        <!-- 员工后台 -->
+        <div id="staff-panel">
+            <h1 style="text-align:center;color:#1890ff;margin-bottom:20px;">⚙️ 员工后台</h1>
+            <div class="card">
+                <div class="time-info">
+                    <p>当前预约时段：<strong id="staffCurrentSlot">--:-- - --:--</strong></p>
+                    <p>可预约取货时段：<strong id="staffPickupSlot">--:-- - --:--</strong></p>
+                </div>
+                <div id="dailyStats" style="margin: 15px 0; padding: 10px; background: #f5f5f5; border-radius: 4px;">
+                    <p>今日已预约：<span id="todayTotal">0</span> 人</p>
+                    <p>营业时间：<span id="staffHoursDisplay">09:00-20:00</span></p>
+                    <p>总预约人次：<span id="totalBookings">0</span></p>
+                </div>
+                <button class="btn" style="background:#1890ff;" onclick="addNewStaff()">➕ 增加其他人员</button>
+                <button class="btn" style="background:#52c41a;" onclick="editLocation()">📍 修改门店定位</button>
+                <button class="btn" style="background:#fa8c16;" onclick="editBusinessHours()">⏰ 修改营业时间</button>
+                <button class="btn btn-outline" onclick="clearTodayData()" style="margin-top:10px;">🗑️ 清除今日数据</button>
+                <button class="btn btn-outline" onclick="logoutStaff()" style="margin-top:10px;">⬅️ 退出</button>
+            </div>
+            <div class="small">
+                <a href="#" onclick="goBackToMember(); return false;">← 返回预约页</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 配置常量
+        const DEFAULT_CONFIG = {
+            lat: 30.247204,
+            lng: 120.049063,
+            radius: 1000
+        };
+
+        const SLOT_DURATION = 30; // 分钟
+        
+        // 从本地存储加载营业时间，如果没有则使用默认值
+        let BUSINESS_HOURS = JSON.parse(localStorage.getItem('business_hours')) || {
+            start_hour: 9,
+            end_hour: 20
+        };
+
+        let CONFIG = JSON.parse(localStorage.getItem('store_config')) || DEFAULT_CONFIG;
+        
+        // 全局时间跟踪
+        let currentSlot = null;      // 当前预约时段
+        let pickupSlot = null;       // 可预约的取货时段（下一时段）
+        let timeCheckInterval = null;
+        let countdownInterval = null;
+
+        // 初始化页面
+        function initPage() {
+            // 更新营业时间显示
+            updateHoursDisplay();
+            
+            updateTimeDisplay();
+            checkUserTodayBooking();
+            
+            // 每10秒更新时间显示
+            timeCheckInterval = setInterval(updateTimeDisplay, 10000);
+            
+            // 每秒更新倒计时
+            countdownInterval = setInterval(updateCountdown, 1000);
+            
+            // 更新统计数据
+            updateTotalBookings();
+        }
+
+        // 更新总预约人次
+        function updateTotalBookings() {
+            const allBookings = JSON.parse(localStorage.getItem('cake_bookings') || '[]');
+            document.getElementById('totalBookings').textContent = allBookings.length;
+        }
+
+        // 更新营业时间显示
+        function updateHoursDisplay() {
+            const startTime = BUSINESS_HOURS.start_hour.toString().padStart(2, '0') + ':00';
+            const endTime = BUSINESS_HOURS.end_hour.toString().padStart(2, '0') + ':00';
+            document.getElementById('displayHours').textContent = startTime + '-' + endTime;
+            document.getElementById('staffHoursDisplay').textContent = startTime + '-' + endTime;
+        }
+
+        // 更新时间显示和时段计算
+        function updateTimeDisplay() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            
+            // 显示当前时间
+            document.getElementById('currentTime').textContent = 
+                now.getHours().toString().padStart(2, '0') + ':' + 
+                now.getMinutes().toString().padStart(2, '0');
+            
+            // 检查是否在营业时间内
+            const startHour = BUSINESS_HOURS.start_hour;
+            const endHour = BUSINESS_HOURS.end_hour;
+            
+            if (currentHour < startHour || currentHour >= endHour) {
+                const startTime = startHour.toString().padStart(2, '0') + ':00';
+                const endTime = endHour.toString().padStart(2, '0') + ':00';
+                document.getElementById('timeWarning').textContent = 
+                    '⏰ 当前非营业时间（营业时间：' + startTime + '-' + endTime + '）';
+                document.getElementById('bookBtn').disabled = true;
+                return;
+            } else {
+                document.getElementById('timeWarning').textContent = '';
+            }
+            
+            // 计算当前时段（向下取整到30分钟）
+            const slotStartMinute = Math.floor(currentMinute / SLOT_DURATION) * SLOT_DURATION;
+            const slotEndMinute = slotStartMinute + SLOT_DURATION;
+            
+            // 当前预约时段
+            currentSlot = {
+                start: new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour, slotStartMinute),
+                end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), currentHour, slotEndMinute)
+            };
+            
+            // 计算可预约的取货时段（下一时段）
+            pickupSlot = new Date(currentSlot.end.getTime());
+            const pickupEnd = new Date(pickupSlot.getTime());
+            pickupEnd.setMinutes(pickupEnd.getMinutes() + SLOT_DURATION);
+            
+            // 检查取货时段是否在营业时间内
+            const pickupSlotHour = pickupSlot.getHours();
+            if (pickupSlotHour >= endHour) {
+                document.getElementById('timeWarning').textContent = 
+                    '⚠️ 今日最后一个预约时段已结束';
+                document.getElementById('bookBtn').disabled = true;
+                return;
+            }
+            
+            // 显示时段信息
+            document.getElementById('currentSlot').textContent = 
+                formatTime(currentSlot.start) + ' - ' + formatTime(currentSlot.end);
+            document.getElementById('pickupTimeSlot').textContent = 
+                formatTime(pickupSlot) + ' - ' + formatTime(pickupEnd);
+            
+            // 员工面板也更新
+            document.getElementById('staffCurrentSlot').textContent = 
+                formatTime(currentSlot.start) + ' - ' + formatTime(currentSlot.end);
+            document.getElementById('staffPickupSlot').textContent = 
+                formatTime(pickupSlot) + ' - ' + formatTime(pickupEnd);
+            
+            // 更新按钮状态
+            updateButtonState();
+        }
+
+        // 更新倒计时
+        function updateCountdown() {
+            if (!currentSlot) return;
+            
+            const now = new Date();
+            const timeToNextSlot = currentSlot.end - now;
+            
+            if (timeToNextSlot > 0) {
+                const minutes = Math.floor(timeToNextSlot / (1000 * 60));
+                const seconds = Math.floor((timeToNextSlot % (1000 * 60)) / 1000);
+                document.getElementById('countdown').textContent = 
+                    minutes + '分' + seconds.toString().padStart(2, '0') + '秒';
+            } else {
+                document.getElementById('countdown').textContent = '00分00秒';
+            }
+        }
+
+        // 格式化时间
+        function formatTime(date) {
+            return date.getHours().toString().padStart(2, '0') + ':' + 
+                   date.getMinutes().toString().padStart(2, '0');
+        }
+
+        // 检查用户今日是否已预约
+        function checkUserTodayBooking() {
+            const today = new Date().toDateString();
+            const bookings = JSON.parse(localStorage.getItem('cake_bookings') || '[]');
+            
+            // 检查设备指纹（简化版）
+            const deviceId = localStorage.getItem('device_id') || generateDeviceId();
+            localStorage.setItem('device_id', deviceId);
+            
+            const userBookedToday = bookings.some(booking => {
+                const bookingDate = new Date(booking.time).toDateString();
+                return bookingDate === today && booking.deviceId === deviceId;
+            });
+            
+            if (userBookedToday) {
+                const userBooking = bookings.find(b => 
+                    new Date(b.time).toDateString() === today && b.deviceId === deviceId
+                );
+                if (userBooking) {
+                    showExistingBooking(userBooking);
+                }
+            }
+        }
+
+        // 生成设备ID
+        function generateDeviceId() {
+            return 'device_' + Math.random().toString(36).substr(2, 9) + 
+                   '_' + Date.now().toString(36);
+        }
+
+        // 显示已有预约
+        function showExistingBooking(booking) {
+            document.getElementById('pickupSlot').textContent = booking.pickupSlot;
+            document.getElementById('codeDisplay').textContent = booking.code;
+            document.getElementById('resultSection').style.display = 'block';
+            document.getElementById('bookBtn').disabled = true;
+            document.getElementById('bookBtn').textContent = '今日已预约';
+        }
+
+        // 更新今日统计数据
+        function updateDailyStats() {
+            const today = new Date().toDateString();
+            const allBookings = JSON.parse(localStorage.getItem('cake_bookings') || '[]');
+            
+            const todayBookings = allBookings.filter(booking => 
+                new Date(booking.time).toDateString() === today
+            );
+            
+            document.getElementById('todayTotal').textContent = todayBookings.length;
+        }
+
+        // 更新按钮状态
+        function updateButtonState() {
+            const btn = document.getElementById('bookBtn');
+            const now = new Date();
+            const currentHour = now.getHours();
+            
+            // 检查是否在营业时间内
+            const startHour = BUSINESS_HOURS.start_hour;
+            const endHour = BUSINESS_HOURS.end_hour;
+            
+            if (currentHour < startHour || currentHour >= endHour) {
+                btn.disabled = true;
+                btn.textContent = '非营业时间';
+                return;
+            }
+            
+            // 检查取货时段是否在营业时间内
+            if (!pickupSlot) {
+                btn.disabled = true;
+                btn.textContent = '无法预约';
+                return;
+            }
+            
+            const pickupSlotHour = pickupSlot.getHours();
+            if (pickupSlotHour >= endHour) {
+                btn.disabled = true;
+                btn.textContent = '今日已结束';
+                return;
+            }
+            
+            // 检查是否今天已预约
+            const today = new Date().toDateString();
+            const bookings = JSON.parse(localStorage.getItem('cake_bookings') || '[]');
+            const deviceId = localStorage.getItem('device_id');
+            
+            const userBookedToday = bookings.some(booking => {
+                const bookingDate = new Date(booking.time).toDateString();
+                return bookingDate === today && booking.deviceId === deviceId;
+            });
+            
+            if (userBookedToday) {
+                btn.disabled = true;
+                btn.textContent = '今日已预约';
+            } else {
+                btn.disabled = false;
+                btn.textContent = '✅ 获取位置并预约';
+            }
+        }
+
+        // 获取地理位置
+        function getLocation() {
+            const btn = document.getElementById('bookBtn');
+            const statusEl = document.getElementById('status');
+            btn.disabled = true;
+            btn.textContent = '📍 获取位置中...';
+            statusEl.textContent = '';
+
+            if (!navigator.geolocation) {
+                statusEl.innerHTML = '<span style="color:red">❌ 浏览器不支持定位</span>';
+                resetButton();
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    const dist = calculateDistance(
+                        pos.coords.latitude, 
+                        pos.coords.longitude, 
+                        CONFIG.lat, 
+                        CONFIG.lng
+                    );
+                    
+                    if (dist <= CONFIG.radius) {
+                        statusEl.innerHTML = '✅ 验证通过 (距离 ' + dist.toFixed(0) + '米)，正在预约...';
+                        setTimeout(() => {
+                            createBooking();
+                        }, 1000);
+                    } else {
+                        statusEl.innerHTML = '❌ 请靠近门店后再试 (当前距离 ' + dist.toFixed(0) + '米)';
+                        resetButton();
+                    }
+                },
+                function(err) {
+                    let msg = '定位失败';
+                    if (err.code === 1) msg = '请开启位置权限';
+                    statusEl.innerHTML = '<span style="color:red">' + msg + '</span>';
+                    resetButton();
+                },
+                { timeout: 10000, enableHighAccuracy: true }
+            );
+        }
+
+        // 创建预约
+        function createBooking() {
+            const deviceId = localStorage.getItem('device_id') || generateDeviceId();
+            localStorage.setItem('device_id', deviceId);
+            
+            // 生成取货码
+            const code = 'CAKE' + Math.floor(1000 + Math.random() * 9000);
+            
+            // 获取取货时段信息（下一时段）
+            const pickupEnd = new Date(pickupSlot.getTime());
+            pickupEnd.setMinutes(pickupEnd.getMinutes() + SLOT_DURATION);
+            const pickupSlotStr = formatTime(pickupSlot) + ' - ' + formatTime(pickupEnd);
+            
+            // 获取当前预约时段作为记录
+            const currentSlotKey = formatTime(currentSlot.start);
+            
+            // 创建预约记录
+            const booking = {
+                code: code,
+                deviceId: deviceId,
+                slotKey: currentSlotKey,  // 记录预约时段
+                pickupSlot: pickupSlotStr,  // 取货时段是下一时段
+                time: new Date().toISOString(),
+                distance: '已验证'
+            };
+            
+            // 保存到本地存储
+            let bookings = JSON.parse(localStorage.getItem('cake_bookings') || '[]');
+            bookings.push(booking);
+            localStorage.setItem('cake_bookings', JSON.stringify(bookings));
+            
+            // 显示成功结果
+            document.getElementById('pickupSlot').textContent = pickupSlotStr;
+            document.getElementById('codeDisplay').textContent = code;
+            document.getElementById('resultSection').style.display = 'block';
+            document.getElementById('status').innerHTML = '';
+            
+            // 禁用按钮
+            const btn = document.getElementById('bookBtn');
+            btn.disabled = true;
+            btn.textContent = '今日已预约';
+            
+            // 更新统计数据
+            updateDailyStats();
+            updateTotalBookings();
+        }
+
+        // 重置按钮状态
+        function resetButton() {
+            const btn = document.getElementById('bookBtn');
+            updateButtonState();
+        }
+
+        // 计算距离函数
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // 员工功能
+        function showStaffLogin() {
+            document.getElementById('staff-login').style.display = 'block';
+        }
+
+        function hideStaffLogin() {
+            document.getElementById('staff-login').style.display = 'none';
+        }
+
+        function doStaffLogin() {
+            const pin = document.getElementById('staffPinInput').value.trim();
+            if (!pin) return;
+            let validPins = JSON.parse(localStorage.getItem('staff_pins') || '["J0S1TA7"]');
+            if (validPins.includes(pin)) {
+                hideStaffLogin();
+                document.getElementById('member-section').style.display = 'none';
+                document.getElementById('staff-panel').style.display = 'block';
+                updateDailyStats();
+                updateTotalBookings();
+                updateTimeDisplay();
+            } else {
+                alert('工号错误');
+            }
+        }
+
+        function addNewStaff() {
+            document.getElementById('add-staff-modal').style.display = 'block';
+            document.getElementById('newStaffPin').value = '';
+        }
+
+        function saveNewStaff() {
+            const newPin = document.getElementById('newStaffPin').value.trim();
+            if (!newPin) {
+                alert('请输入工号');
+                return;
+            }
+            let pins = JSON.parse(localStorage.getItem('staff_pins') || '["J0S1TA7"]');
+            if (pins.includes(newPin)) {
+                alert('该工号已存在');
+                return;
+            }
+            pins.push(newPin);
+            localStorage.setItem('staff_pins', JSON.stringify(pins));
+            document.getElementById('add-staff-modal').style.display = 'none';
+            alert('新工号添加成功！');
+        }
+
+        function editLocation() {
+            document.getElementById('edit-location-modal').style.display = 'block';
+            document.getElementById('newLat').value = CONFIG.lat;
+            document.getElementById('newLng').value = CONFIG.lng;
+        }
+
+        function saveNewLocation() {
+            const latStr = document.getElementById('newLat').value.trim();
+            const lngStr = document.getElementById('newLng').value.trim();
+
+            const lat = parseFloat(latStr);
+            const lng = parseFloat(lngStr);
+
+            if (isNaN(lat) || isNaN(lng)) {
+                alert('请输入有效的数字');
+                return;
+            }
+
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                alert('经纬度范围不合法');
+                return;
+            }
+
+            CONFIG.lat = lat;
+            CONFIG.lng = lng;
+            localStorage.setItem('store_config', JSON.stringify(CONFIG));
+            document.getElementById('edit-location-modal').style.display = 'none';
+            alert('门店定位已更新！');
+        }
+
+        // 修改营业时间
+        function editBusinessHours() {
+            const modal = document.getElementById('edit-hours-modal');
+            document.getElementById('startHour').value = BUSINESS_HOURS.start_hour;
+            document.getElementById('endHour').value = BUSINESS_HOURS.end_hour;
+            modal.style.display = 'block';
+        }
+
+        function saveBusinessHours() {
+            const startHour = parseInt(document.getElementById('startHour').value);
+            const endHour = parseInt(document.getElementById('endHour').value);
+
+            if (isNaN(startHour) || isNaN(endHour)) {
+                alert('请输入有效的时间');
+                return;
+            }
+
+            if (startHour >= endHour) {
+                alert('开始时间必须小于结束时间');
+                return;
+            }
+
+            if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23) {
+                alert('时间必须在0-23之间');
+                return;
+            }
+
+            BUSINESS_HOURS.start_hour = startHour;
+            BUSINESS_HOURS.end_hour = endHour;
+            
+            // 保存到本地存储
+            localStorage.setItem('business_hours', JSON.stringify(BUSINESS_HOURS));
+            
+            // 更新显示
+            updateHoursDisplay();
+            
+            // 关闭模态框
+            document.getElementById('edit-hours-modal').style.display = 'none';
+            
+            alert('营业时间已更新为 ' + 
+                  startHour.toString().padStart(2, '0') + ':00 - ' + 
+                  endHour.toString().padStart(2, '0') + ':00');
+            
+            // 重新检查当前时间状态
+            updateTimeDisplay();
+        }
+
+        function clearTodayData() {
+            if (confirm('确定清除今日所有预约记录？这将无法恢复！')) {
+                const today = new Date().toDateString();
+                let allBookings = JSON.parse(localStorage.getItem('cake_bookings') || '[]');
+                
+                const filteredBookings = allBookings.filter(booking => 
+                    new Date(booking.time).toDateString() !== today
+                );
+                
+                localStorage.setItem('cake_bookings', JSON.stringify(filteredBookings));
+                updateDailyStats();
+                updateTotalBookings();
+                alert('今日数据已清空！');
+                
+                location.reload();
+            }
+        }
+
+        function logoutStaff() {
+            goBackToMember();
+        }
+
+        function goBackToMember() {
+            document.getElementById('staff-panel').style.display = 'none';
+            document.getElementById('member-section').style.display = 'block';
+            initPage();
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initPage();
+        });
+    </script>
+</body>
+</html>
